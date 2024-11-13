@@ -15,6 +15,7 @@ import java.util.List;
 
 import static com.rte_france.antares.datamanager_back.mapper.ProjectMapper.toProjectDtos;
 
+@CrossOrigin
 @Slf4j
 @RestController
 @RequestMapping("/v1/project")

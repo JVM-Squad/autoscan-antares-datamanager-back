@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import static com.rte_france.antares.datamanager_back.mapper.StudyMapper.toStudyPage;
 
+@CrossOrigin
 @Slf4j
 @RestController
 @RequestMapping("/v1/study")
