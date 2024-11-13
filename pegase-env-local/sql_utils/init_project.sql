@@ -45,9 +45,9 @@ VALUES
 
 INSERT INTO pegase_local_db_schema.project_tags (project_id, tag)
 VALUES
-    (1, 'tag1'),
-    (1, 'tag2'),
-    (1, 'tag2'),
+    (1, 'tag1 area link'),
+    (1, 'tag2 test pegase'),
+    (1, 'tag2 antares back'),
     (1, 'tag2'),
     (1, 'tag2'),
     (1, 'tag1'),
