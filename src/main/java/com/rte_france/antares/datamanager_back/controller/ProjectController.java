@@ -30,6 +30,7 @@ public class ProjectController {
     @Operation(summary = "Get pinned projects by user")
     @GetMapping("/pinned")
     public ResponseEntity<List<ProjectDto>> getProjectsByUser(@RequestParam String userId) {
+        log.info("Get pinned projects by user {}", userId);
         return new ResponseEntity<>(toProjectDtos(projectService.getPinnedProjectsByUser(userId)), HttpStatus.OK);
     }
 
@@ -51,7 +52,7 @@ public class ProjectController {
             @RequestParam(value = "search", required = false, defaultValue = "") String search,
             @RequestParam(value = "page", required = false, defaultValue = "1") Integer page,
             @RequestParam(value = "size", required = false, defaultValue = "12") Integer size) {
-
+        log.info("Search projects by criteria");
         Pageable paging = PageRequest.of(page - 1, size, Sort.by(SORTING_CRITERION));
         return new ResponseEntity<>(toProjectPage(projectService.findProjectsByCriteria(search, paging)), HttpStatus.OK);
     }
@@ -66,6 +67,7 @@ public class ProjectController {
     @Operation(summary = "Delete project if it contains no studies")
     @DeleteMapping("/{id}")
     public void deleteProject(@PathVariable Integer id) {
+        log.info("Delete project by id");
         projectService.deleteProjectById(id);
     }
 

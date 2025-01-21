@@ -1,8 +1,7 @@
 package com.rte_france.antares.datamanager_back.service;
 
 import com.rte_france.antares.datamanager_back.dto.ProjectDto;
-import com.rte_france.antares.datamanager_back.exception.BadRequestException;
-import com.rte_france.antares.datamanager_back.exception.ResourceNotFoundException;
+import com.rte_france.antares.datamanager_back.exception.BusinessException;
 import com.rte_france.antares.datamanager_back.repository.PinnedProjectRepository;
 import com.rte_france.antares.datamanager_back.repository.ProjectRepository;
 import com.rte_france.antares.datamanager_back.repository.model.PinnedProjectEntity;
@@ -25,6 +24,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
@@ -121,12 +122,11 @@ class ProjectServiceImplTest {
         when(pinnedProjectRepository.existsById(pinnedProjectEntityId)).thenReturn(false);
 
         // Then
-        ResourceNotFoundException exception = assertThrows(
-                ResourceNotFoundException.class,
+        BusinessException exception = assertThrows(
+                BusinessException.class,
                 () -> projectService.deletePinnedProjectForGivenUser(userId, projectId)
         );
-
-        assertEquals("Pinned project not found for user: testUser, project ID: 2", exception.getMessage());
+        assertThat(exception.getMessage()).contains("Pinned project not found for user");
         verify(pinnedProjectRepository, never()).deletePinnedProjectEntityById(pinnedProjectEntityId);
     }
 
@@ -171,8 +171,8 @@ class ProjectServiceImplTest {
 
         when(pinnedProjectRepository.findById(pinnedProjectEntityId)).thenReturn(Optional.of(pinnedProjectEntity));
 
-        BadRequestException exception = assertThrows(
-                BadRequestException.class,
+        BusinessException exception = assertThrows(
+                BusinessException.class,
                 () -> projectService.pinProjectForUser(userId, projectId)
         );
 
@@ -189,12 +189,12 @@ class ProjectServiceImplTest {
         when(pinnedProjectRepository.findById(pinnedProjectEntityId)).thenReturn(Optional.empty());
         when(projectRepository.findById(projectId)).thenReturn(Optional.empty());
 
-        ResourceNotFoundException exception = assertThrows(
-                ResourceNotFoundException.class,
+        BusinessException exception = assertThrows(
+                BusinessException.class,
                 () -> projectService.pinProjectForUser(userId, projectId)
         );
 
-        assertEquals("Project not found with ID: 1", exception.getMessage());
+        assertThat( exception.getMessage()).contains("Project not found with ID");
         verify(pinnedProjectRepository, never()).save(any(PinnedProjectEntity.class));
     }
 
@@ -206,8 +206,8 @@ class ProjectServiceImplTest {
 
         when(pinnedProjectRepository.findById_Nni(userId)).thenReturn(pinnedProjects);
 
-        BadRequestException exception = assertThrows(
-                BadRequestException.class,
+        BusinessException exception = assertThrows(
+                BusinessException.class,
                 () -> projectService.pinProjectForUser(userId, projectId)
         );
 
@@ -228,18 +228,16 @@ void deleteProjectById_deletesProjectWhenNoStudies() {
     verify(projectRepository, times(1)).deleteById(projectId);
 }
 
+
 @Test
 void deleteProjectById_throwsExceptionWhenProjectNotFound() {
     Integer projectId = 1;
 
     when(projectRepository.findById(projectId)).thenReturn(Optional.empty());
 
-    ResourceNotFoundException exception = assertThrows(
-            ResourceNotFoundException.class,
-            () -> projectService.deleteProjectById(projectId)
-    );
-
-    assertEquals("Project not found with ID: 1", exception.getMessage());
+    assertThatThrownBy(() -> projectService.deleteProjectById(projectId))
+            .isInstanceOf(BusinessException.class)
+            .hasMessage("Project not found with ID: {0}", projectId);
     verify(projectRepository, never()).deleteById(projectId);
 }
 
@@ -252,8 +250,8 @@ void deleteProjectById_throwsExceptionWhenProjectContainsStudies() {
 
     when(projectRepository.findById(projectId)).thenReturn(Optional.of(project));
 
-    BadRequestException exception = assertThrows(
-            BadRequestException.class,
+    BusinessException exception = assertThrows(
+            BusinessException.class,
             () -> projectService.deleteProjectById(projectId)
     );
 

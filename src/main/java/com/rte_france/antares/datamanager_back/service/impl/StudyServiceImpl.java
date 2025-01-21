@@ -1,7 +1,8 @@
 package com.rte_france.antares.datamanager_back.service.impl;
 
 import com.rte_france.antares.datamanager_back.dto.StudyDTO;
-import com.rte_france.antares.datamanager_back.exception.BadRequestException;
+import com.rte_france.antares.datamanager_back.exception.BusinessException;
+import com.rte_france.antares.datamanager_back.exception.PegaseErrorCode;
 import com.rte_france.antares.datamanager_back.repository.ProjectRepository;
 import com.rte_france.antares.datamanager_back.repository.StudyRepository;
 import com.rte_france.antares.datamanager_back.repository.TrajectoryRepository;
@@ -21,6 +22,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
@@ -84,7 +86,12 @@ public class StudyServiceImpl implements StudyService {
     public void deleteStudyById(Integer id) {
         //delete study if exists
         studyRepository.findById(id).ifPresentOrElse(studyRepository::delete, () -> {
-            throw new BadRequestException("Study with id " + id + " not found.");
+            throw BusinessException.builder()
+                    .message("Study with id {0} not found.")
+                    .pegaseErrorCode(PegaseErrorCode.PEGASE_ERROR_001)
+                    .httpStatus(HttpStatus.BAD_REQUEST)
+                    .build();
+            //new BadRequestException("Study with id " + id + " not found.");
         });
     }
 
@@ -93,13 +100,21 @@ public class StudyServiceImpl implements StudyService {
         String studyName = studyDTO.getName() + "-" + studyDTO.getHorizon() + "_REF";
         studyDTO.setName(studyName);
         if (studyDTO.getProject() == null || studyDTO.getProject().isEmpty()) {
-            throw new BadRequestException("Project name must be provided.");
+            throw BusinessException.builder()
+                    .message("Project name must be provided.")
+                    .pegaseErrorCode(PegaseErrorCode.PEGASE_ERROR_001)
+                    .httpStatus(HttpStatus.BAD_REQUEST)
+                    .build();
         }
         validateHorizon(studyDTO);
         validateTags(studyDTO);
 
         if (studyExists(studyDTO.getName(), studyDTO.getProject())) {
-            throw new BadRequestException("A study with the same name already exists for the given project.");
+            throw BusinessException.builder()
+                    .message("A study with the same name already exists for the given project.")
+                    .pegaseErrorCode(PegaseErrorCode.PEGASE_ERROR_001)
+                    .httpStatus(HttpStatus.BAD_REQUEST)
+                    .build();
         }
 
         ProjectEntity projectEntity = projectRepository.findByName(studyDTO.getProject())
@@ -143,7 +158,11 @@ public class StudyServiceImpl implements StudyService {
 
     private static void validateTags(StudyDTO studyDTO) {
         if (studyDTO.getTags() != null && studyDTO.getTags().size() > 10) {
-            throw new BadRequestException("Tags list must not exceed 10 items.");
+            throw BusinessException.builder()
+                    .message("Tags list must not exceed 10 items.")
+                    .pegaseErrorCode(PegaseErrorCode.PEGASE_ERROR_001)
+                    .httpStatus(HttpStatus.BAD_REQUEST)
+                    .build();
         }
     }
 
@@ -156,10 +175,18 @@ public class StudyServiceImpl implements StudyService {
         try {
             int horizonYear = Integer.parseInt(studyDTO.getHorizon());
             if (horizonYear < currentYear) {
-                throw new BadRequestException("Horizon year must be greater than the current year.");
+                throw BusinessException.builder()
+                        .message("Horizon year must be greater than the current year.")
+                        .pegaseErrorCode(PegaseErrorCode.PEGASE_ERROR_001)
+                        .httpStatus(HttpStatus.BAD_REQUEST)
+                        .build();
             }
         } catch (NumberFormatException e) {
-            throw new BadRequestException("Horizon must be a valid year.");
+            throw BusinessException.builder()
+                    .message("Horizon must be a valid year.")
+                    .pegaseErrorCode(PegaseErrorCode.PEGASE_ERROR_001)
+                    .httpStatus(HttpStatus.BAD_REQUEST)
+                    .build();
         }
     }
 

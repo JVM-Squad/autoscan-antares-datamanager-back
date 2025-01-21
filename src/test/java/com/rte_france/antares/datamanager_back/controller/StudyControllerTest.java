@@ -1,7 +1,8 @@
 package com.rte_france.antares.datamanager_back.controller;
 
 import com.rte_france.antares.datamanager_back.dto.StudyDTO;
-import com.rte_france.antares.datamanager_back.exception.BadRequestException;
+import com.rte_france.antares.datamanager_back.exception.BusinessException;
+import com.rte_france.antares.datamanager_back.exception.PegaseErrorCode;
 import com.rte_france.antares.datamanager_back.repository.model.ProjectEntity;
 import com.rte_france.antares.datamanager_back.repository.model.StudyEntity;
 import com.rte_france.antares.datamanager_back.repository.model.StudyStatus;
@@ -15,6 +16,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
@@ -140,14 +142,18 @@ class StudyControllerTest {
     @Test
     void createStudyThrowsBadRequestWhenNoProjectInfoProvided() throws Exception {
         StudyDTO studyDTO = StudyDTO.builder().name("Study 1").createdBy("User 1").build();
-
-        when(studyService.createStudy(any(StudyDTO.class))).thenThrow(new BadRequestException("Either project name or project ID must be provided."));
+        BusinessException businessException = BusinessException.builder()
+                .message("Project name must be provided.")
+                .pegaseErrorCode(PegaseErrorCode.PEGASE_ERROR_001)
+                .httpStatus(HttpStatus.BAD_REQUEST)
+                .build();
+        when(studyService.createStudy(any(StudyDTO.class))).thenThrow(businessException);
 
         this.mockMvc.perform(post("/v1/study")
                         .contentType(MediaType.APPLICATION_JSON_VALUE)
                         .content(Utils.asJsonString(studyDTO))
                         .accept(MediaType.APPLICATION_JSON_VALUE))
-                .andExpect(status().isInternalServerError())
+                .andExpect(status().isBadRequest())
                 .andDo(MockMvcResultHandlers.print())
                 .andReturn();
 
@@ -169,11 +175,16 @@ class StudyControllerTest {
 
     @Test
     void deleteStudyByIdThrowsBadRequestWhenStudyNotFound() throws Exception {
-        doThrow(new BadRequestException("Study with id 1 not found.")).when(studyService).deleteStudyById(1);
+        BusinessException businessException = BusinessException.builder()
+                .message("Study with id 1 not found")
+                .pegaseErrorCode(PegaseErrorCode.PEGASE_ERROR_001)
+                .httpStatus(HttpStatus.NOT_FOUND)
+                .build();
+        doThrow(businessException).when(studyService).deleteStudyById(1);
 
         this.mockMvc.perform(delete("/v1/study/1")
                         .contentType(MediaType.APPLICATION_JSON_VALUE))
-                .andExpect(status().isInternalServerError())
+                .andExpect(status().isNotFound())
                 .andDo(MockMvcResultHandlers.print())
                 .andReturn();
 

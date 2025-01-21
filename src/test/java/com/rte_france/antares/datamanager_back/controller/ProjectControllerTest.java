@@ -1,8 +1,8 @@
 package com.rte_france.antares.datamanager_back.controller;
 
 import com.rte_france.antares.datamanager_back.dto.ProjectDto;
-import com.rte_france.antares.datamanager_back.exception.BadRequestException;
-import com.rte_france.antares.datamanager_back.exception.ResourceNotFoundException;
+import com.rte_france.antares.datamanager_back.exception.BusinessException;
+import com.rte_france.antares.datamanager_back.exception.PegaseErrorCode;
 import com.rte_france.antares.datamanager_back.repository.model.ProjectEntity;
 import com.rte_france.antares.datamanager_back.service.ProjectService;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
@@ -22,7 +23,6 @@ import org.springframework.web.context.WebApplicationContext;
 import java.util.Collections;
 import java.util.List;
 
-import static com.rte_france.antares.datamanager_back.mapper.ProjectMapper.toProjectDto;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -76,7 +76,7 @@ class ProjectControllerTest {
     }
 
     @Test
-     void removePinnedProjectToUser_shouldCallServiceMethod() throws Exception {
+    void removePinnedProjectToUser_shouldCallServiceMethod() throws Exception {
         // Given
         String userId = "testUser";
         Integer projectId = 1;
@@ -128,14 +128,18 @@ class ProjectControllerTest {
     void pinProjectForUser_returnsConflictWhenProjectAlreadyPinned() throws Exception {
         String userId = "user1";
         Integer projectId = 1;
-
-        doThrow(new BadRequestException("Project already pinned for user")).when(projectService).pinProjectForUser(userId, projectId);
+        BusinessException businessException = BusinessException.builder()
+                .message("Project already pinned")
+                .pegaseErrorCode(PegaseErrorCode.PEGASE_ERROR_001)
+                .httpStatus(HttpStatus.BAD_REQUEST)
+                .build();
+        doThrow(businessException).when(projectService).pinProjectForUser(userId, projectId);
 
         mockMvc.perform(post("/v1/project/pin")
                         .param("userId", userId)
                         .param("projectId", projectId.toString())
                         .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -156,38 +160,48 @@ class ProjectControllerTest {
                 .andExpect(jsonPath("$.name").value("name2050"))
                 .andExpect(jsonPath("$.description").value("project2050"));
     }
-@Test
-void deleteProject_returnsNoContentWhenProjectDeleted() throws Exception {
-    Integer projectId = 1;
 
-    doNothing().when(projectService).deleteProjectById(projectId);
+    @Test
+    void deleteProject_returnsNoContentWhenProjectDeleted() throws Exception {
+        Integer projectId = 1;
 
-    mockMvc.perform(delete("/v1/project/{id}", projectId)
-                    .contentType(MediaType.APPLICATION_JSON))
-            .andExpect(status().isOk());
-}
+        doNothing().when(projectService).deleteProjectById(projectId);
 
-@Test
-void deleteProject_returnsNotFoundWhenProjectDoesNotExist() throws Exception {
-    Integer projectId = 1;
+        mockMvc.perform(delete("/v1/project/{id}", projectId)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
 
-    doThrow(new ResourceNotFoundException("Project not found")).when(projectService).deleteProjectById(projectId);
+    @Test
+    void deleteProject_returnsNotFoundWhenProjectDoesNotExist() throws Exception {
+        Integer projectId = 1;
 
-    mockMvc.perform(delete("/v1/project/{id}", projectId)
-                    .contentType(MediaType.APPLICATION_JSON))
-            .andExpect(status().isNotFound());
-}
+        BusinessException businessException = BusinessException.builder()
+                .message("Project id does not exist")
+                .pegaseErrorCode(PegaseErrorCode.PEGASE_ERROR_001)
+                .httpStatus(HttpStatus.BAD_REQUEST)
+                .build();
+        doThrow(businessException).when(projectService).deleteProjectById(projectId);
+        mockMvc.perform(delete("/v1/project/{id}", projectId)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+    }
 
-@Test
-void deleteProject_returnsBadRequestWhenProjectContainsStudies() throws Exception {
-    Integer projectId = 1;
+    @Test
+    void deleteProject_returnsBadRequestWhenProjectContainsStudies() throws Exception {
+        Integer projectId = 1;
 
-    doThrow(new BadRequestException("Project contains studies and cannot be deleted")).when(projectService).deleteProjectById(projectId);
+        BusinessException businessException = BusinessException.builder()
+                .message("Project contains studies and cannot be deleted")
+                .pegaseErrorCode(PegaseErrorCode.PEGASE_ERROR_001)
+                .httpStatus(HttpStatus.BAD_REQUEST)
+                .build();
+        doThrow(businessException).when(projectService).deleteProjectById(projectId);
 
-    mockMvc.perform(delete("/v1/project/{id}", projectId)
-                    .contentType(MediaType.APPLICATION_JSON))
-            .andExpect(status().isInternalServerError());
-}
+        mockMvc.perform(delete("/v1/project/{id}", projectId)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+    }
 
     @Test
     void searchProjectsByNameReturnsMatchingProjects() throws Exception {

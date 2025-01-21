@@ -1,8 +1,8 @@
 package com.rte_france.antares.datamanager_back.service.impl;
 
 import com.rte_france.antares.datamanager_back.dto.ProjectDto;
-import com.rte_france.antares.datamanager_back.exception.BadRequestException;
-import com.rte_france.antares.datamanager_back.exception.ResourceNotFoundException;
+import com.rte_france.antares.datamanager_back.exception.BusinessException;
+import com.rte_france.antares.datamanager_back.exception.PegaseErrorCode;
 import com.rte_france.antares.datamanager_back.mapper.ProjectMapper;
 import com.rte_france.antares.datamanager_back.repository.PinnedProjectRepository;
 import com.rte_france.antares.datamanager_back.repository.ProjectRepository;
@@ -22,13 +22,13 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 
 @Slf4j
@@ -74,8 +74,7 @@ public class ProjectServiceImpl implements ProjectService {
     public List<ProjectDto> searchProjectsByName(String partialName) {
         List<ProjectEntity> projectEntities = projectRepository.findByNameContainingIgnoreCase(partialName);
         return projectEntities.stream()
-                .map(ProjectMapper::toProjectDto)
-                .collect(Collectors.toList());
+                .map(ProjectMapper::toProjectDto).toList();
     }
 
     public static Specification<ProjectEntity> hasStudyName(String studyName) {
@@ -112,7 +111,12 @@ public class ProjectServiceImpl implements ProjectService {
 
         boolean exists = pinnedProjectRepository.existsById(pinnedProjectEntityId);
         if (!exists) {
-            throw new ResourceNotFoundException("Pinned project not found for user: " + userId + ", project ID: " + projectId);
+            throw BusinessException.builder()
+                    .message("Pinned project not found for user: {0} ,  project ID: {1}")
+                    .pegaseErrorCode(PegaseErrorCode.PEGASE_ERROR_001)
+                    .errorMessageArguments(List.of(userId, projectId.toString()))
+                    .httpStatus(HttpStatus.BAD_REQUEST)
+                    .build();
         }
         pinnedProjectRepository.deletePinnedProjectEntityById(pinnedProjectEntityId);
     }
@@ -120,11 +124,15 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public ProjectEntity findProjectById(Integer projectId) {
         Optional<ProjectEntity> projectDetails = projectRepository.findById(projectId);
-        if (projectDetails.isPresent()){
+        if (projectDetails.isPresent()) {
             return projectDetails.get();
-        }
-        else
-            throw new ResourceNotFoundException("Project with ID: " + projectId + " not found");
+        } else
+            throw BusinessException.builder()
+                    .message("Project with ID:  {0} not found")
+                    .pegaseErrorCode(PegaseErrorCode.PEGASE_ERROR_001)
+                    .errorMessageArguments(List.of(projectId.toString()))
+                    .httpStatus(HttpStatus.NOT_FOUND)
+                    .build();
     }
 
     @Transactional
@@ -138,14 +146,23 @@ public class ProjectServiceImpl implements ProjectService {
 
         // Check if the project is already pinned for the user
         pinnedProjectRepository.findById(pinnedProjectEntityId).ifPresent(pinnedProject -> {
-            throw new BadRequestException(
-                    "Project already pinned"
-            );
+            throw BusinessException.builder()
+                    .message("Project already pinned")
+                    .pegaseErrorCode(PegaseErrorCode.PEGASE_ERROR_001)
+                    .httpStatus(HttpStatus.BAD_REQUEST)
+                    .build();
         });
 
         // Fetch the project entity or throw an exception if not found
         ProjectEntity project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new ResourceNotFoundException("Project not found with ID: " + projectId));
+                .orElseThrow(() ->
+
+                        BusinessException.builder()
+                                .message("Project not found with ID:{0}")
+                                .pegaseErrorCode(PegaseErrorCode.PEGASE_ERROR_001)
+                                .errorMessageArguments(List.of(projectId.toString()))
+                                .httpStatus(HttpStatus.BAD_REQUEST)
+                                .build());
 
         // Create and save the pinned project entity
         PinnedProjectEntity pinnedProjectEntity = new PinnedProjectEntity();
@@ -161,9 +178,20 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public void deleteProjectById(Integer projectId) {
         ProjectEntity project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new ResourceNotFoundException("Project not found with ID: " + projectId));
+                .orElseThrow(() ->
+                        BusinessException.builder()
+                                .message("Project not found with ID: {0}")
+                                .pegaseErrorCode(PegaseErrorCode.PEGASE_ERROR_001)
+                                .errorMessageArguments(List.of(projectId.toString()))
+                                .httpStatus(HttpStatus.NOT_FOUND)
+                                .build());
         if (project.getStudies() != null && !project.getStudies().isEmpty()) {
-            throw new BadRequestException("Project contains studies and cannot be deleted");
+            throw BusinessException.builder()
+                    .message("Project contains studies and cannot be deleted")
+                    .pegaseErrorCode(PegaseErrorCode.PEGASE_ERROR_001)
+                    .httpStatus(HttpStatus.BAD_REQUEST)
+                    .build();
+
         }
         projectRepository.deleteById(projectId);
     }
@@ -171,7 +199,11 @@ public class ProjectServiceImpl implements ProjectService {
     private void checkIfUserHasALreadyMaxPinnedProjects(String userId) {
         List<PinnedProjectEntity> pinnedProjects = pinnedProjectRepository.findById_Nni(userId);
         if (pinnedProjects.size() >= 3) {
-            throw new BadRequestException("You have already 3 pinned projects , please unpin one before pinning another one.");
+            throw BusinessException.builder()
+                    .message("You have already 3 pinned projects , please unpin one before pinning another one.")
+                    .pegaseErrorCode(PegaseErrorCode.PEGASE_ERROR_001)
+                    .httpStatus(HttpStatus.BAD_REQUEST)
+                    .build();
         }
     }
 

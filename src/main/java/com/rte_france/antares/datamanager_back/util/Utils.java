@@ -4,29 +4,26 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.rte_france.antares.datamanager_back.exception.AlreadyProcessedException;
-import com.rte_france.antares.datamanager_back.exception.ResourceNotFoundException;
+import com.rte_france.antares.datamanager_back.exception.BusinessException;
+import com.rte_france.antares.datamanager_back.exception.PegaseErrorCode;
 import com.rte_france.antares.datamanager_back.exception.TechnicalAntaresDataMangerException;
-import com.rte_france.antares.datamanager_back.repository.model.StudyEntity;
 import com.rte_france.antares.datamanager_back.repository.model.TrajectoryEntity;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.poi.ss.usermodel.*;
-import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.Year;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-
-import static org.hibernate.type.descriptor.java.JdbcDateJavaType.DATE_FORMAT;
+import java.util.List;
 
 
 /**
@@ -96,7 +93,12 @@ public class Utils {
             log.info("File already processed but with different content : " + file.getName());
             return true;
         } else if (isSameFileWithSameContent(file, trajectoryEntity)) {
-            throw new AlreadyProcessedException("File already processed : " + file.getName());
+            throw BusinessException.builder()
+                    .message("File already processed : {0}")
+                    .pegaseErrorCode(PegaseErrorCode.PEGASE_ERROR_001)
+                    .errorMessageArguments(List.of(file.getName()))
+                    .httpStatus(HttpStatus.BAD_REQUEST)
+                    .build();
         }
         return false;
     }
@@ -106,7 +108,12 @@ public class Utils {
         log.info("File path : " + file.getPath());
         log.info("File name : " + file.getName());
         if (!file.exists()) {
-            throw new ResourceNotFoundException("Trajectory not found with file name  : " + fileName);
+            throw BusinessException.builder()
+                    .message("Trajectory not found with file name  : {0}")
+                    .pegaseErrorCode(PegaseErrorCode.PEGASE_ERROR_001)
+                    .errorMessageArguments(List.of(file.getName()))
+                    .httpStatus(HttpStatus.NOT_FOUND)
+                    .build();
         }
         return file;
     }
@@ -141,7 +148,7 @@ public class Utils {
             return cell.getStringCellValue();
         } else if (cell.getCellType() == CellType.NUMERIC) {
             return cell.getNumericCellValue();
-        }else if (cell.getCellType() == CellType.BOOLEAN) {
+        } else if (cell.getCellType() == CellType.BOOLEAN) {
             return cell.getBooleanCellValue();
         }
 
@@ -180,7 +187,7 @@ public class Utils {
      *
      * @param dateStr the string to verify, expected in the format "yyyy-MM-dd'T'HH:mm:ss"
      * @return true if dateStr can be parsed to LocalDateTime in the specified format; false otherwise
-     *
+     * <p>
      * TODO: Confirm the date format "yyyy-MM-dd'T'HH:mm:ss" with functional team.
      */
     public static boolean hasValidDateFormat(String dateStr) {

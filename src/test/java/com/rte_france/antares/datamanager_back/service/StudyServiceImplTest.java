@@ -1,7 +1,7 @@
 package com.rte_france.antares.datamanager_back.service;
 
 import com.rte_france.antares.datamanager_back.dto.StudyDTO;
-import com.rte_france.antares.datamanager_back.exception.BadRequestException;
+import com.rte_france.antares.datamanager_back.exception.BusinessException;
 import com.rte_france.antares.datamanager_back.repository.ProjectRepository;
 import com.rte_france.antares.datamanager_back.repository.StudyRepository;
 import com.rte_france.antares.datamanager_back.repository.model.ProjectEntity;
@@ -193,7 +193,7 @@ class StudyServiceImplTest {
     void createStudyThrowsBadRequestWhenNoProjectNameProvided() {
         StudyDTO studyDTO = StudyDTO.builder().name("Study 1").createdBy("User 1").build();
 
-        BadRequestException exception = assertThrows(BadRequestException.class, () -> {
+        BusinessException exception = assertThrows(BusinessException.class, () -> {
             studyServiceImpl.createStudy(studyDTO);
         });
 
@@ -219,11 +219,11 @@ class StudyServiceImplTest {
     void deleteStudyByIdThrowsBadRequestExceptionWhenStudyNotFound() {
         when(studyRepository.findById(1)).thenReturn(Optional.empty());
 
-        BadRequestException exception = assertThrows(BadRequestException.class, () -> {
+        BusinessException exception = assertThrows(BusinessException.class, () -> {
             studyServiceImpl.deleteStudyById(1);
         });
 
-        assertEquals("Study with id 1 not found.", exception.getMessage());
+        assertThat(exception.getMessage()).contains("Study with id");
         verify(studyRepository, never()).delete(any(StudyEntity.class));
     }
 }

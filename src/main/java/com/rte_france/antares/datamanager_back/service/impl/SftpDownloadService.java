@@ -4,12 +4,14 @@ import com.rte_france.antares.datamanager_back.configuration.AntaressDataManager
 import com.rte_france.antares.datamanager_back.dto.AreaDTO;
 import com.rte_france.antares.datamanager_back.dto.FsTrajectoryDTO;
 import com.rte_france.antares.datamanager_back.dto.TrajectoryType;
+import com.rte_france.antares.datamanager_back.exception.BusinessException;
+import com.rte_france.antares.datamanager_back.exception.PegaseErrorCode;
 import com.rte_france.antares.datamanager_back.exception.TechnicalAntaresDataMangerException;
+import com.rte_france.antares.datamanager_back.exception.TechnicalException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.sshd.sftp.client.SftpClient;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.integration.file.remote.session.Session;
+import org.springframework.http.HttpStatus;
 import org.springframework.integration.file.remote.session.SessionFactory;
 import org.springframework.integration.sftp.session.SftpRemoteFileTemplate;
 import org.springframework.stereotype.Service;
@@ -55,7 +57,11 @@ public class SftpDownloadService {
                     log.info("Downloading the file: " + remoteFilePath);
                     session.read(remoteFilePath, outputStream);
                 } else {
-                    throw new TechnicalAntaresDataMangerException("Error while retrieving the file: " + remoteFilePath);
+                    throw TechnicalException.builder()
+                            .message("Error while retrieving the file: {0}")
+                            .pegaseErrorCode(PegaseErrorCode.PEGASE_ERROR_001)
+                            .errorMessageArguments(List.of(remoteFilePath))
+                            .build();
                 }
                 return localFile;
             });
