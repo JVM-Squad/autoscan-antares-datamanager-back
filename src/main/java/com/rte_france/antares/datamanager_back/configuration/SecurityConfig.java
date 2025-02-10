@@ -35,7 +35,6 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
-               // .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
                         // Allow Swagger UI & API docs
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
@@ -48,23 +47,6 @@ public class SecurityConfig {
                         )
                 );
         return http.build();
-    }
-
-    //@Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", getCorsConfiguration());
-        return source;
-    }
-
-    private CorsConfiguration getCorsConfiguration() {
-        CorsConfiguration corsConfig = new CorsConfiguration();
-        corsConfig.setAllowedOrigins(Collections.singletonList("*"));
-        corsConfig.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        corsConfig.setAllowedHeaders(Collections.singletonList("*"));
-        corsConfig.setAllowCredentials(true);
-        corsConfig.setMaxAge(3600L);
-        return corsConfig;
     }
 
     @Bean
